@@ -13,7 +13,6 @@ import torch.optim as optim
 from torchsummary import summary
 from dataLoader.dataloader_unet import Load
 from dataLoader.dataloader_cnn import LoadCnn
-from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
 import segmentation_models_pytorch as smp
 from modelArch.cnn import Cnn
@@ -52,9 +51,6 @@ def calc_loss(pred, target, bce_weight=0.5):
     pred = torch.sigmoid(pred)
     dice = dice_loss(pred, target)
     loss = bce * bce_weight + dice * (1 - bce_weight)
-    # metrics['bce'] += bce.data.cpu().numpy() * target.size(0)
-    # metrics['dice'] += dice.data.cpu().numpy() * target.size(0)
-    # metrics['loss'] += loss.data.cpu().numpy() * target.size(0)
     return loss
 
 
@@ -92,10 +88,10 @@ def init(**kwargs):
         net.load_state_dict(torch.load("checkpoints/"+str(resume)+".pth"))
         print("Resuming training from "+str(resume)+" checkpoint")
     else:
-       # net.apply(weights_init)
+       
         pass
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-    #summary(net,input_size=(3,256,256))
+    
     size = len(data)
     print("Data Loaded")
     train_size = math.floor(train_percent*size)
@@ -107,12 +103,6 @@ def init(**kwargs):
     train, validation = torch.utils.data.random_split(data, [train_size, test_size])
     train_loader = DataLoader(train, batch_size=batch_size, shuffle=True, num_workers=4)
     valid_loader = DataLoader(validation, batch_size=batch_size, shuffle=True, num_workers=4)
-    # x=iter(dataLoader)
-    # img,mask=x.next()
-    # grid=torchvision.utils.make_grid(img)
-    # writer.add_image('images',grid,0)
-    # writer.add_graph(net,img)
-    # writer.close()
     net.to(device)
 
 
@@ -125,7 +115,7 @@ def validation(**kwargs):
     global net, valid_loader, train_loader, device
     valid_loader = kwargs["valid_loader"]
     criterion = kwargs["criterion"]
-    # model=kwargs["model"]
+    
     p = 0
     valid_loss = 0.0
     with torch.no_grad():
@@ -162,11 +152,9 @@ def training_loop(**kwargs):
         criterion = nn.BCEWithLogitsLoss()
     elif model == "cnn":
         criterion = nn.CrossEntropyLoss()
-    # opt=torch.optim.SGD(net.parameters(),lr=lr,momentum=0.9)
+    
     opt = optim.Adam(net.parameters(),lr=lr,weight_decay=1e-5)
-    sch = torch.optim.lr_scheduler.ReduceLROnPlateau(opt)
-    # sch=torch.optim.lr_scheduler.StepLR(opt, step_size=50, gamma=0.1)
-    # sch=torch.optim.lr_scheduler.OneCycleLR(opt, max_lr=0.01, steps_per_epoch=len(train_loader), epochs=50)
+    
     xx = []
     yy = []
     for epoch_num in range(1, epochs+1):
@@ -182,7 +170,7 @@ def training_loop(**kwargs):
             loss = calc_loss(outputs, masks)  # criterion(outputs,masks)
             loss.backward()
             opt.step()
-            _, predicted = torch.max(outputs.data, 1)
+            
             total_train += masks.nelement()
             correct_train += predicted.eq(masks.data).sum().item()
             running_loss += (torch.exp(loss).item()) * (args.batch_size/num_imgs)
@@ -204,7 +192,7 @@ def training_loop(**kwargs):
                 total_train = 0
 
             if i == 10:
-                sch.step(valid_loss)
+                
         running_loss = 0.0
         correct_train = 0
         total_train = 0
